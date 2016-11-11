@@ -1,0 +1,337 @@
+<html>
+
+	<head>
+	        <title>Unusual Events</title>
+            <!-- Latest compiled and minified CSS -->
+            <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+
+            <!-- jQuery library -->
+            <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+
+            <!-- Latest compiled JavaScript -->
+            <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+            <script src="https://code.highcharts.com/highcharts.js"></script>
+
+            <script src="https://code.highcharts.com/highcharts-more.js"></script>
+
+            <script src="https://code.highcharts.com/modules/exporting.js"></script>
+
+            <script src="https://use.fontawesome.com/37311c198b.js"></script>
+
+
+
+
+            <script type="text/javascript">
+		    	$(function () {
+		    	    $(document).ready(function () {
+					    $('.fa-thumbs-o-up').click(function() {
+			        	    var id = $(this).attr('id');
+			        	    $("#"+id).css('color', 'green');
+			        	    id = id.replace("up", "down");
+			        	    $("#"+id).css('color', 'black');
+
+			        	    var id_commit = id.split("_")[2];
+
+			        	    $.ajax({
+                                  type: 'POST',
+                                  url: "/thumbs/"+id_commit+"/1",
+			                });
+			            });
+
+			            $('.fa-thumbs-o-down').click(function() {
+			        	    var id = $(this).attr('id');
+			            	$("#"+id).css('color', 'red');
+			        	    id = id.replace("down", "up");
+			            	$("#"+id).css('color', 'black');
+
+                            var id_commit = id.split("_")[2];
+
+			            	$.ajax({
+                                  type: 'POST',
+                                  url: "/thumbs/"+id_commit+"/0",
+			                });
+			            });
+
+		    	    });
+		    	});
+
+		    	$(document).on('click', '.send', function() {
+		    	    var id = $(this).attr('id');
+		    	    var comment=document.getElementById("comments_"+id).value;
+		    	    var url="/comment/"+id;
+
+                    $.ajax({
+                                  type: 'POST',
+                                  url: url,
+                                  contentType: 'application/json',
+				                  data: JSON.stringify({
+				                    comment: comment
+				                  }),
+				                  dataType: 'json',
+
+                                  success: function (response){
+
+                                  }
+
+                            });
+		        });
+
+
+    		    $(document).on('click', '.info', function() {
+                        var id = $(this).attr('id');
+                        var id_commit = id.split("_")[1];
+                        var url="/values/"+id_commit;
+
+                        $.ajax({
+
+    		                type: 'GET',
+                            url: url,
+                            dataType: 'json',
+
+    		                success: function (response){
+
+                                $.each(response, function(index, element) {
+
+                                    $('#chart_'+id_commit).highcharts({
+
+                                        chart: {
+                                            type: 'boxplot',
+                                            inverted: 'true'
+                                        },
+
+                                        title: {
+                                            text: 'Unusual Event'
+                                        },
+
+                                        tooltip: {
+                                                formatter:function() {
+                                                    return 'Lower Quartile: '+element[0].q1+'<br>Median: '+element[0].median+'<br>Upper Quartile: '+element[0].q3+'<br>Event: '+element[0].value;
+                                                }
+                                        },
+
+                                        xAxis: {
+	                                        categories: [element[0].type]
+                                        },
+
+                                        legend: {
+                                            enabled: false
+                                        },
+
+                                        series: [{
+                                            name: element[0].type,
+                                            data: [
+                                                [element[0].q1,element[0].q1,element[0].median,element[0].q3,element[0].q3],
+                                            ]
+
+                                        }, {
+                                        name: 'Unusual Event',
+                                        color: Highcharts.getOptions().colors[0],
+                                        type: 'scatter',
+                                        data: [ // x, y positions where 0 is the first category
+                                            [0, element[0].value],
+                                            ],
+                                        marker: {
+                                            fillColor: 'white',
+                                            lineWidth: 1,
+                                            lineColor: Highcharts.getOptions().colors[0]
+                                        }
+                                        }]
+
+                                    });
+                                });
+    		                },
+
+    		                error: function(error) {
+				                console.log(error);
+				            }
+
+    		            });
+
+    		    });
+
+    		    $(document).on('click', '#filter', function() {
+
+    		        var project=$( "#selProj option:selected" ).text();
+    		        var user=$( "#selUser option:selected" ).text();
+    		        var type=$( "#selType option:selected" ).text();
+    		        var day=$( "#selDay option:selected" ).text();
+    		        var month=$( "#selMonth option:selected" ).text();
+    		        var year=$( "#selYear option:selected" ).text();
+    		        var thumb=$( "#selThumb option:selected").text();
+    		        var url="/"+project+"/"+user+"/"+type+"/"+day+"/"+month+"/"+year+"/"+thumb;
+                    window.location.href=url;
+    		    });
+
+    		    $(document).ready(function () {
+    		        $('#selProj').val('{{p}}');
+    		        $('#selUser').val('{{u}}');
+    		        $('#selType').val('{{t}}');
+    		        $("#selDay").val('{{d}}');
+    		        $("#selMonth").val('{{m}}');
+    		        $("#selYear").val('{{y}}');
+    		        $('#selThumb').val('{{th}}');
+    		    });
+
+
+    			</script>
+
+    			<div class="row" style="background-color:#020a16; position:fixed; width:100%; margin:0; z-index:2;">
+                    <div class="col-md-12">
+                        <h3 style="color:white">{{user}}</h3>
+                        <div class="col-md-11">
+                            <label for="selProj" style="color:white"> Project:</label>
+                                <select class="input-small" id="selProj">
+                                    <option>All</option>
+                                    {% for project in projects %}
+                                    <option>{{project.project}}</option>
+                                    {% endfor %}
+                                </select>
+
+                            <label for="selUser" style="color:white"> User:</label>
+                                <select class="input-small" id="selUser">
+                                    <option>All</option>
+                                    {% for user in users %}
+                                    <option>{{user.user}}</option>
+                                    {% endfor %}
+                                </select>
+
+                            <label for="selType" style="color:white"> Type:</label>
+                                <select class="input-small" id="selType">
+                                    <option>All</option>
+                                    {% for type in types %}
+                                    <option>{{type.type}}</option>
+                                    {% endfor %}
+                                </select>
+
+                            <label for="selDay" style="color:white"> Day:</label>
+                                <select class="input-small" id="selDay">
+                                    <option>All</option>
+                                    {% for n in range(31) %}
+                                    <option>{{n+1}}</option>
+                                    {% endfor %}
+                                </select>
+
+                            <label for="selMonth" style="color:white"> Month:</label>
+                                <select class="input-small" id="selMonth">
+                                    <option>All</option>
+                                    <option>January</option>
+                                    <option>February</option>
+                                    <option>March</option>
+                                    <option>April</option>
+                                    <option>May</option>
+                                    <option>June</option>
+                                    <option>July</option>
+                                    <option>August</option>
+                                    <option>September</option>
+                                    <option>October</option>
+                                    <option>November</option>
+                                    <option>December</option>
+                                </select>
+
+                            <label for="selYear" style="color:white"> Year:</label>
+                                <select class="input-small" id="selYear">
+                                    <option>All</option>
+                                    {% for year in years %}
+                                    <option>{{year.year}}</option>
+                                    {% endfor %}
+                                </select>
+
+                            <label for="selThumb" style="color:white"> Thumbs:</label>
+                                <select class="input-small" id="selThumb">
+                                    <option>All</option>
+                                    <option>Up</option>
+                                    <option>Down</option>
+                                    <option>Unrated</option>
+                                </select>
+                            <button class="btn btn-default btn-xs" role="button" id="filter">Filter</button>
+                            <a href="/" class="btn btn-default btn-xs" role="button" id="clear">Clear</a>
+                        </div>
+                        <div class="col-md-1"><a href="/logout" class="btn btn-default btn-xs" role="button" id="logout">Log Out</a></div>
+                    </div>
+
+    	        </div>
+	</head>
+
+	<body>
+
+
+		<div class="main">
+				<table class="table table-hover" style="position:relative; width:100%; top:100px; z-index:1;">
+						<thead>
+							<tr>
+							    <th></th>
+							    <th></th>
+							    <th>Project</th>
+								<th>User</th>
+								<th>Event</th>
+								<th>TimeStamp</th>
+							</tr>
+						</thead>
+						<tbody>
+						   {% for event in events %}
+							<tr>
+                                <td>{% if event.thumb %}
+							        <span id="vote_up_{{ event.id }}" class="fa fa-thumbs-o-up fa-lg" style='color:green'></span>
+							        {% else %}
+                                    <span id="vote_up_{{ event.id }}" class="fa fa-thumbs-o-up fa-lg"></span>
+                                    {%endif %}
+							    </td>
+							    <td>{% if event.thumb %}
+							        <span id="vote_down_{{ event.id }}" class="fa fa-thumbs-o-down fa-lg"></span>
+							        {% elif event.thumb is none %}
+							        <span id="vote_down_{{ event.id }}" class="fa fa-thumbs-o-down fa-lg"></span>
+							        {% else %}
+							        <span id="vote_down_{{ event.id }}" class="fa fa-thumbs-o-down fa-lg" style='color:red'></span>
+                                    {%endif %}
+							    </td>
+							    <td><a target="_blank" href="http://www.github.com/{{event.user}}/{{event.project}}">{{ event.project }}</a></td>
+							    <td><a target="_blank" href="http://www.github.com/{{event.user}}">{{ event.user }}</a></td>
+							    <td>This <a target="_blank" href="{{event.url}}" >{{event.type}}</a> is an outlier in terms of {{event.outliertype}}. <a class="info" id="link_{{event.id}}" data-target="#information_{{event.id}}" data-toggle="modal" href=""> Click here for more information</a></td>
+								<td>{{ event.timestamp }}</td>
+								<td><button class="btn btn-default" data-toggle="modal" data-target="#modal-feedback{{event.id}}">Comment</button></td>
+                            </tr>
+                        </tbody>
+							<div class="modal fade" id="modal-feedback{{event.id}}" role="dialog">
+				              <div class="modal-dialog">
+				                 <div class="modal-content">
+				                    <div class="modal-header">
+			                	        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+				                        <h4 class="modal-title">Feedback</h4>
+			             	        </div>
+			             	        <form action="" method="POST" >
+				                      <div class="modal-body">
+				                         <textarea class="form-control" id="comments_{{event.id}}" placeholder="{{event.comment}}"></textarea>
+				                      </div>
+				                      <div class="modal-footer">
+				                        <input type="submit" class="send" id="{{event.id}}" value="Submit" >
+				                      </div>
+				                    </form>
+				                 </div><!-- /.modal-content -->
+				              </div><!-- /.modal-dialog -->
+				            </div><!-- /.modal -->
+
+				            <div class="modal fade" id="information_{{event.id}}" role="dialog">
+				              <div class="modal-dialog">
+				                 <div class="modal-content">
+				                    <div class="modal-header">
+			                	        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+				                        <h4 class="modal-title" style="text-transform: capitalize;">{{event.type}} Information</h4>
+			             	        </div>
+
+				                      <div class="modal-body">
+                                        <div class="chart" id=chart_{{event.id}} style="height: 200px; margin: auto; min-width: 310px; max-width: 800px"></div>
+                                        <div>Comment: {{event.comment}}</div>
+				                      </div>
+				                      <div class="modal-footer">
+				                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+				                      </div>
+				                 </div><!-- /.modal-content -->
+				              </div><!-- /.modal-dialog -->
+				            </div><!-- /.modal -->
+                        {% endfor %}
+				</table>
+		</div>
+	</body>
+
+</html>
